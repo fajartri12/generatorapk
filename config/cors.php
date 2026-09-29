@@ -7,11 +7,9 @@ return [
     | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
     |
-    | The SPA is its own project (mdgenerator-frontend) on its own origin, so
-    | the API is genuinely cross-origin now and only the frontend origin may
-    | call it with credentials. `paths` stays scoped to the API: the browser
-    | redirects (Google OAuth, password reset) are top-level navigations, which
-    | CORS does not apply to.
+    | UI dan API kini satu origin, jadi tidak ada permintaan lintas-origin di
+    | produksi dan CORS praktis tidak pernah tersentuh. Blok ini tetap ada
+    | hanya sebagai jaring pengaman kalau API diakses dari host lain.
     |
     */
 

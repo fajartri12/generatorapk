@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "mdgenerator/backend",
     "type": "project",
-    "description": "MDGenerator API backend (Laravel). Frontend React ada di repo terpisah: mdgenerator-frontend.",
+    "description": "MDGenerator — aplikasi Laravel yang melayani API dan UI (hasil build statis di public/build) dalam satu origin.",
     "keywords": ["laravel", "api", "mdgenerator"],
     "license": "MIT",
     "require": {

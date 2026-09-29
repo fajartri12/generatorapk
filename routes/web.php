@@ -13,11 +13,11 @@ use Laravel\Socialite\Facades\Socialite;
 |--------------------------------------------------------------------------
 | Web routes: browser redirects only
 |--------------------------------------------------------------------------
-| SPA dan API berbagi satu origin, dan semua HTML SPA dilayani rute fallback
-| di bootstrap/app.php — termasuk /reset-password/{token}, karena frontend_url
-| kini sama dengan origin ini. Yang tersisa di sini hanya rute yang memang
-| harus dimiliki browser: handshake OAuth (Socialite menyimpan nonce `state`
-| di sesi, yang tidak bisa dipegang SPA berbasis token).
+| UI adalah hasil build statis di public/build, disajikan Laravel langsung
+| (berkas nyata menang atas fallback) — tidak ada Vite/npm. Yang tersisa di
+| sini hanya rute yang memang harus dimiliki browser: handshake OAuth
+| (Socialite menyimpan nonce `state` di sesi, yang tidak bisa dipegang SPA
+| berbasis token).
 */
 
 /*

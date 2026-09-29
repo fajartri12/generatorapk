@@ -139,7 +139,7 @@ MD;
 # Software Design Document — {$t}
 
 ## 1. Arsitektur
-- Frontend: React + Vite + TypeScript
+- Frontend: React + TypeScript (hasil build statis di public/build)
 - Backend: Laravel REST API
 - Database: MySQL
 
@@ -270,7 +270,7 @@ MD;
 {$this->summary($request)}
 
 ## Tech Stack
-- Frontend: React, Vite, TypeScript, Tailwind CSS
+- Frontend: React, TypeScript, Tailwind CSS
 - Backend: Laravel, PHP, REST API, Sanctum
 - Database: MySQL
 

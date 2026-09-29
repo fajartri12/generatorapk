@@ -13,7 +13,6 @@
 /.vscode
 /.zed
 /auth.json
-/public/build
 /public/hot
 /public/storage
 /storage/*.key
@@ -23,8 +22,8 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
-# --- Frontend (Vite + React) ---
-/node_modules
-/dist
+# --- Frontend ---
+# public/build/ (shell SPA + aset ber-hash) DI-TRACK: itu satu-satunya salinan
+# UI yang disajikan Laravel. Menghapus folder itu = aplikasi tanpa tampilan.
 .env.local
 *.local

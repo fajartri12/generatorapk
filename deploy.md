@@ -2,9 +2,10 @@
 
 Panduan ini menjelaskan cara men-deploy MDGenerator ke shared hosting cPanel.
 
-Karena aplikasi ini **satu origin** (Laravel melayani API `/api/*` sekaligus SPA
-hasil build dari `public/build`), deploy-nya lebih sederhana: tidak ada CORS,
-tidak ada dua aplikasi yang harus disinkronkan.
+Karena aplikasi ini **satu origin** (Laravel melayani API `/api/*` sekaligus UI
+statis dari `public/build`), deploy-nya lebih sederhana: tidak ada CORS, tidak
+ada dua aplikasi yang harus disinkronkan, dan tidak ada langkah build (UI sudah
+berupa berkas statis di dalam repo).
 
 > **Penting — keamanan.** Jangan pernah meng-upload seluruh proyek ke
 > `public_html`. Folder `app/`, `config/`, `vendor/`, `storage/`, dan file
@@ -35,7 +36,7 @@ Struktur target:
 ```
 /home/USERNAME/
 ├── mdgenerator/          ← kode aplikasi (DI LUAR webroot)
-│   ├── app/  bootstrap/  config/  routes/  src/
+│   ├── app/  bootstrap/  config/  routes/  public/
 │   ├── vendor/
 │   ├── storage/          ← wajib writable
 │   └── .env              ← kredensial, tidak boleh publik
@@ -44,30 +45,25 @@ Struktur target:
     ├── .htaccess         ← milik Laravel, JANGAN dihapus
     ├── favicon.svg
     ├── robots.txt
-    └── build/            ← hasil npm run build
+    └── build/            ← UI statis (ditrack git, ikut di-upload)
 ```
 
 Karena Document Root tetap `public_html` dan `public/` tetap bernama `public/`,
 tidak ada masalah dengan `public_path()` Laravel.
 
-### A1. Build di lokal
+### A1. Siapkan arsip di lokal
 
-```bash
-cd c:\xampp\htdocs\generator
-npm ci
-npm run build          # hasil ke public/build
-```
+UI sudah berupa berkas statis di `public/build/` dan di-track di git, jadi
+**tidak ada langkah build** — `npm`/Vite tidak dipakai lagi.
 
-Buat arsip yang akan di-upload (kecualikan `node_modules`, `.git`, dan folder
-sisa `mdgenerator`):
+Buat arsip yang akan di-upload (kecualikan `.git` dan folder sisa `mdgenerator`):
 
 ```powershell
 cd c:\xampp\htdocs\generator
 tar -a -c -f ..\mdgenerator.zip `
-  --exclude=node_modules --exclude=.git --exclude=mdgenerator `
-  vendor app bootstrap config database public routes src storage tests `
-  artisan composer.json composer.lock package.json tsconfig.json `
-  vite.config.ts .env.example .htaccess
+  --exclude=.git --exclude=mdgenerator `
+  vendor app bootstrap config database public routes storage tests `
+  artisan composer.json composer.lock .env.example .htaccess
 ```
 
 > Kalau bisa menjalankan Composer di server (langkah A4), `vendor` tidak perlu
@@ -147,8 +143,6 @@ QUEUE_CONNECTION=database            # jangan 'sync' di produksi
 CACHE_STORE=database
 
 GOOGLE_REDIRECT_URI=https://domainanda.com/auth/google/callback
-
-VITE_API_URL=                        # tetap kosong (same origin)
 ```
 
 Buat database & user MySQL lebih dulu di cPanel → **MySQL Databases**, lalu:
@@ -246,14 +240,9 @@ worker praktis selalu hidup tanpa proses menggantung.
 
 ## Setelah ada perubahan kode
 
-Frontend di-build ke `public/build/`, jadi **`npm run build` wajib dijalankan
-setiap kali frontend berubah**, lalu unggah ulang isi `public_html/build/`.
-
-```bash
-npm run build
-```
-
-Lalu unggah `public/build/` ke `public_html/build/`.
+UI adalah berkas statis di `public/build/` (ditrack di git), jadi tidak ada
+langkah build. Kalau UI berubah, unggah ulang isi `public/build/` ke
+`public_html/build/`.
 
 Untuk perubahan backend, setelah meng-upload file, bersihkan cache:
 
@@ -291,9 +280,6 @@ php artisan view:cache
 ## Ringkasan perintah
 
 ```bash
-# Di lokal
-npm ci && npm run build
-
 # Di server (Terminal cPanel)
 cd ~/mdgenerator
 composer install --no-dev --optimize-autoloader

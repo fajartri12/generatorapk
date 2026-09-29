@@ -1,11 +1,11 @@
 # MDGenerator
 
 Aplikasi generator dokumen (PRD, SRS, SDD, dan lain-lain) berbasis AI.
-**Satu aplikasi Laravel 12 yang melayani API sekaligus frontend SPA** dalam satu origin.
+**Satu aplikasi Laravel 12** yang melayani API `/api/*` sekaligus UI dalam satu
+origin — tidak perlu CORS di produksi.
 
-- Backend: Laravel 12 + PHP 8.2 + MySQL/MariaDB
-- Frontend: Vite 7 + React 19 + TypeScript + Tailwind v4 (sumber di `src/`, `index.html`)
-- API dan SPA dilayani dari proses yang sama — tidak perlu CORS di produksi.
+- Backend & UI: Laravel 12 + PHP 8.2 + MySQL/MariaDB
+- UI: hasil build statis di `public/build/`, disajikan Laravel (tanpa Vite/npm)
 
 ---
 
@@ -15,7 +15,6 @@ Aplikasi generator dokumen (PRD, SRS, SDD, dan lain-lain) berbasis AI.
 |---|---|
 | PHP | >= 8.2 (ekstensi: `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`) |
 | Composer | 2.x |
-| Node.js | >= 20 (dites di Node 24) |
 | MySQL / MariaDB | 10.4+ |
 
 ---
@@ -24,7 +23,6 @@ Aplikasi generator dokumen (PRD, SRS, SDD, dan lain-lain) berbasis AI.
 
 ```bash
 composer install
-npm install
 ```
 
 Siapkan `.env` (salin dari `.env.example`, lalu sesuaikan):
@@ -42,30 +40,17 @@ FRONTEND_URL=http://localhost:8000
 API_FRONTEND_URL=http://localhost:8000
 GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
 SANCTUM_STATEFUL_DOMAINS=localhost:8000,127.0.0.1:8000
-
-# Frontend (dipakai oleh Vite)
-VITE_API_URL=
-VITE_DEV_BACKEND=http://localhost:8000
 ```
 
-Migrasi dan seed:
+Migrasi dan seed, lalu jalankan server:
 
 ```bash
 php artisan migrate --seed
-```
-
-Build frontend, lalu jalankan server:
-
-```bash
-npm run build
 php artisan serve --port=8000
 ```
 
-Buka <http://localhost:8000>.
-
-> `VITE_API_URL` sengaja dibiarkan **kosong**: artinya frontend memanggil API
-> secara relatif (`/api/...`) pada origin yang sama. Hanya isi bila API berada
-> di host berbeda.
+Buka <http://localhost:8000>. UI sudah ikut di repo di `public/build/` — tidak
+ada langkah build.
 
 ---
 
@@ -88,43 +73,21 @@ php artisan schedule:work
 
 ## Mode pengembangan
 
-Frontend punya Vite dev server dengan HMR di port **5173**. Server itu mem-proxy
-`/api`, `/auth`, `/storage`, dan `/up` ke Laravel di port 8000.
-
-Terminal 1 — backend:
-
-```bash
-php artisan serve --port=8000
-```
-
-Terminal 2 — frontend:
-
-```bash
-npm run dev
-```
-
-Buka <http://localhost:5173> untuk mengembangkan UI. Semua permintaan API tetap
-diarahkan ke Laravel 8000 lewat proxy, jadi tidak ada masalah CORS.
-
-Perintah lain:
-
-```bash
-npm run typecheck   # tsc --noEmit
-npm run build       # tsc --noEmit && vite build  -> public/build
-npm run preview     # pratinjau hasil build
-```
+Tidak ada dev server terpisah — `php artisan serve --port=8000` melayani UI dan
+API sekaligus, jadi cukup buka <http://localhost:8000>.
 
 ---
 
-## Cara deploy SPA
+## Cara menyajikan UI
 
-Hasil `npm run build` ditulis ke `public/build/` (aset diberi prefix `/build/`).
-Laravel melayani `public/build/index.html` sebagai shell SPA untuk setiap URL
-non-API melalui `Route::fallback()` yang didaftarkan di `bootstrap/app.php`,
-dengan pengecualian `/api/*` agar tetap mengembalikan 404 JSON.
+UI adalah berkas statis di `public/build/` (`index.html` + `assets/*`). Berkas
+nyata selalu menang, jadi Laravel menyajikannya langsung, dan setiap URL
+non-API yang tidak punya berkas dibalas shell `public/build/index.html` lewat
+`Route::fallback()` di `bootstrap/app.php` — dengan pengecualian `/api/*` agar
+tetap 404 JSON.
 
-Konsekuensinya: **jalankan `npm run build` setiap kali frontend berubah** sebelum
-deploy, karena produksi tidak memakai Vite dev server.
+> `public/build/` **di-track di git**: itu satu-satunya salinan UI yang
+disajikan Laravel. Menghapusnya = aplikasi tanpa tampilan.
 
 ---
 
@@ -133,14 +96,8 @@ deploy, karena produksi tidak memakai Vite dev server.
 ```
 app/                  # kode backend Laravel (Controllers, Models, Services, Jobs, ...)
 routes/api.php        # endpoint /api/*
-routes/web.php        # route bridge non-API (halaman reset password, redirect Google)
-src/                  # sumber frontend React
-  app/                # definisi route SPA
-  components/         # komponen UI & layout
-  features/           # fitur per-domain (landing, dashboard, projects, workspace, admin)
-  lib/                # api client, hooks, auth provider
-public/build/         # hasil build SPA (dibuat oleh npm run build)
-vite.config.ts        # konfigurasi build & dev proxy
+routes/web.php        # route bridge non-API (redirect Google OAuth)
+public/build/         # UI hasil build (ditrack di git, disajikan Laravel)
 config/md-generator.php  # konfigurasi khusus aplikasi
 ```
 
@@ -156,11 +113,7 @@ queue worker, dan pemecahan masalah) ada di [deploy.md](deploy.md).
 ## Pengujian
 
 ```bash
-# Suite backend (PHPUnit)
 php artisan test
-
-# Pemeriksaan tipe frontend
-npm run typecheck
 ```
 
 ---

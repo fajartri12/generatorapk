@@ -14,12 +14,56 @@ berupa berkas statis di dalam repo).
 
 ---
 
+## Jalan cepat (disarankan)
+
+Tiga perintah, sisanya cuma klik-klik di cPanel:
+
+**1. Di komputer lokal** — buat arsip siap upload:
+
+```powershell
+cd c:\xampp\htdocs\generator
+powershell -ExecutionPolicy Bypass -File deploy\make-zip.ps1
+```
+
+Menghasilkan `c:\xampp\htdocs\mdgenerator.zip` (~37 MB, `vendor/` ikut supaya
+server tidak perlu Composer). Tambahkan `-NoVendor` kalau hosting Anda punya
+Terminal/SSH dan mau `composer install` sendiri di server (arsip jadi ~2 MB).
+
+Skrip ini otomatis membuang berkas yang **tidak boleh** ikut ke produksi:
+`.git`, log, cache view, cache bootstrap, dan foto bukti transfer yang
+tertinggal di `storage/`.
+
+**2. Di cPanel → File Manager** — upload ZIP ke `/home/USERNAME/`, klik kanan →
+**Extract** menjadi folder `mdgenerator/`.
+
+**3. Di cPanel → Terminal** — jalankan installer:
+
+```bash
+cd ~/mdgenerator && php deploy/install.php
+```
+
+Installer membuat folder runtime (`storage/*`, `bootstrap/cache`) beserta
+permission-nya, menyiapkan `.env` + `APP_KEY`, menjalankan `composer install`
+(kalau `vendor/` tidak ikut di-upload dan Composer tersedia), lalu migrasi dan
+memanaskan cache.
+
+**Jalankan sekali lagi** setelah Anda mengisi kredensial di `.env` — pada
+jalannya yang pertama installer sengaja berhenti sebelum migrasi karena `.env`
+masih berisi nilai contoh (`DB_DATABASE=mdgenerator`, `DB_USERNAME=root`), dan
+memberi tahu Anda apa saja yang harus diisi.
+
+Setelah itu tinggal 2 langkah manual yang tidak bisa diotomatiskan: pindahkan
+isi `mdgenerator/public/` ke `public_html/` (langkah A3) dan isi kredensial di
+`.env` (langkah A5).
+
+---
+
 ## Pilihan opsi deploy
 
-| | Opsi A — `public_html` + edit `index.php` | Opsi B — Document Root kustom |
+| | Opsi A — `public_html` + `index.php` | Opsi B — Document Root kustom |
 |---|---|---|
 | Butuh ubah Document Root? | Tidak | Ya (butuh addon domain/subdomain) |
-| Ubah file? | Edit `public_html/index.php` (3 baris) | Tidak ada |
+| Ubah file? | Tidak (cukup salin 2 berkas) | Tidak ada |
 | Struktur folder | `public/` dipecah ke `public_html/` | `public/` tetap utuh |
 | Tahan update framework | Cukup | Paling baik |
 | Cocok untuk | Domain utama yang terkunci ke `public_html` | Addon domain / subdomain |
@@ -41,11 +85,11 @@ Struktur target:
 │   ├── storage/          ← wajib writable
 │   └── .env              ← kredensial, tidak boleh publik
 └── public_html/          ← document root domain
-    ├── index.php         ← diedit (menunjuk ke ../mdgenerator)
-    ├── .htaccess         ← milik Laravel, JANGAN dihapus
+    ├── index.php         ← SALINAN dari deploy/cpanel/index.php
+    ├── .htaccess         ← SALINAN dari deploy/cpanel/.htaccess
     ├── favicon.svg
     ├── robots.txt
-    └── build/            ← UI statis (ditrack git, ikut di-upload)
+    └── build/            ← UI statis (ditrack git, otomatis ikut ZIP)
 ```
 
 Karena Document Root tetap `public_html` dan `public/` tetap bernama `public/`,
@@ -56,18 +100,18 @@ tidak ada masalah dengan `public_path()` Laravel.
 UI sudah berupa berkas statis di `public/build/` dan di-track di git, jadi
 **tidak ada langkah build** — `npm`/Vite tidak dipakai lagi.
 
-Buat arsip yang akan di-upload (kecualikan `.git` dan folder sisa `mdgenerator`):
-
 ```powershell
 cd c:\xampp\htdocs\generator
-tar -a -c -f ..\mdgenerator.zip `
-  --exclude=.git --exclude=mdgenerator `
-  vendor app bootstrap config database public routes storage tests `
-  artisan composer.json composer.lock .env.example .htaccess
+powershell -ExecutionPolicy Bypass -File deploy\make-zip.ps1
 ```
 
-> Kalau bisa menjalankan Composer di server (langkah A4), `vendor` tidak perlu
-> ikut di-upload — arsipnya jadi jauh lebih kecil.
+Hasilnya `c:\xampp\htdocs\mdgenerator.zip`. Isi arsip sudah diverifikasi:
+`artisan`, `composer.json`, `app/`, `bootstrap/`, `config/`, `database/`,
+`public/` (termasuk `public/build/`), `routes/`, `vendor/`, `.env.example`, dan
+folder `deploy/`.
+
+> **Ingin arsip kecil?** Pakai `-NoVendor`, lalu di server jalankan
+> `composer install --no-dev --optimize-autoloader` (langkah A4).
 
 ### A2. Upload & ekstrak
 
@@ -79,30 +123,19 @@ Di cPanel → **File Manager**:
 3. Kembali ke `public_html/`, hapus file bawaan cPanel (`index.html`,
    `default.php`) — tetapi **pertahankan** `.htaccess` milik Laravel.
 
-### A3. Edit `public_html/index.php`
+### A3. Salin `index.php` (tidak perlu diedit)
 
-Hanya 3 baris yang berubah: semua path relatif `__DIR__.'/../'` diganti absolut
-ke folder aplikasi.
+Timpa `public_html/index.php` dengan isi `mdgenerator/deploy/cpanel/index.php`:
 
-```php
-<?php
-
-use Illuminate\Foundation\Application;
-use Illuminate\Http\Request;
-
-define('LARAVEL_START', microtime(true));
-
-if (file_exists($maintenance = '/home/USERNAME/mdgenerator/storage/framework/maintenance.php')) {
-    require $maintenance;
-}
-
-require '/home/USERNAME/mdgenerator/vendor/autoload.php';
-
-(require_once '/home/USERNAME/mdgenerator/bootstrap/app.php')
-    ->handleRequest(Request::capture());
+```bash
+cd ~ && cp mdgenerator/deploy/cpanel/index.php public_html/index.php
+cp mdgenerator/deploy/cpanel/.htaccess public_html/.htaccess
 ```
 
-Ganti `USERNAME` dengan username cPanel Anda (cek di File Manager: `/home/mdgen/...`).
+Skrip ini **mendeteksi sendiri** folder aplikasi (`../mdgenerator`) dan mencari
+folder berisi `bootstrap/app.php` + `vendor/autoload.php` kalau namanya berbeda.
+Jadi kalau username cPanel Anda `mdgen`, tidak ada yang perlu diubah — tidak ada
+`USERNAME` yang harus diganti manual.
 
 ### A4. Install dependensi & siapkan `.env`
 
@@ -110,13 +143,18 @@ Buka cPanel → **Terminal** (atau SSH):
 
 ```bash
 cd ~/mdgenerator
-composer install --no-dev --optimize-autoloader
-cp .env.example .env
-php artisan key:generate
+php deploy/install.php
 ```
 
-> **Tanpa Terminal/SSH?** Upload folder `vendor/` dari lokal, lalu generate
-> `APP_KEY` di lokal (`php artisan key:generate`) dan salin nilainya ke `.env`.
+Installer sudah menangani `composer install` (kalau `vendor/` belum lengkap),
+`cp .env.example .env`, `key:generate`, pembuatan folder runtime + permission,
+`migrate --force`, dan `config/route:cache`.
+
+> **Tanpa Terminal/SSH?** Upload folder `vendor/` dari lokal (tanpa `-NoVendor`),
+> lalu generate `APP_KEY` di lokal (`php artisan key:generate`) dan salin nilainya
+> ke `.env`. Buat folder `storage/app/private`, `storage/app/public`,
+> `storage/framework/{cache/data,sessions,testing,views}`, `storage/logs`,
+> dan `bootstrap/cache` secara manual di File Manager, semuanya permission `775`.
 
 ### A5. Isi `.env` produksi
 
@@ -145,16 +183,28 @@ CACHE_STORE=database
 GOOGLE_REDIRECT_URI=https://domainanda.com/auth/google/callback
 ```
 
-Buat database & user MySQL lebih dulu di cPanel → **MySQL Databases**, lalu:
+Buat database & user MySQL lebih dulu di cPanel → **MySQL Databases**.
+
+Setelah `.env` diisi, jalankan ulang:
 
 ```bash
+cd ~/mdgenerator
 php artisan migrate --force
 php artisan config:cache
 php artisan route:cache
-php artisan view:cache
 ```
 
+> `view:cache` tidak dipakai — proyek ini tidak punya `resources/views`, UI-nya
+> berkas statis di `public/build`. Perintah itu akan gagal dengan
+> `DirectoryNotFoundException`, dan `deploy/install.php` sudah melewatinya.
+
+> Kalau urutannya dibalik (installer dulu, `.env` diisi belakangan), migrasi akan
+> memakai nilai `.env` lama. Jalankan ulang perintah di atas setelah `.env`
+> benar — `config:cache` wajib diulang setiap kali `.env` berubah.
+
 ### A6. Permission
+
+Sudah dikerjakan otomatis oleh `deploy/install.php`. Kalau perlu manual:
 
 ```bash
 chmod -R 775 storage bootstrap/cache
@@ -177,7 +227,22 @@ Kalau hosting mengizinkan Document Root kustom untuk addon domain/subdomain
 Tidak ada file yang diubah, tidak ada path absolut, dan `public/` tetap di posisi
 yang diharapkan Laravel — paling tahan terhadap update framework.
 
+`deploy/cpanel/public.htaccess` adalah salinan `public/.htaccess` standar
+Laravel, untuk kasus Document Root kustom yang tidak menyertakan `.htaccess`.
+
 Sisanya sama: langkah **A1**, **A4**, **A5**, **A6**.
+
+---
+
+## Berkas di folder `deploy/`
+
+| Berkas | Fungsi |
+|---|---|
+| `make-zip.ps1` | Membuat `../mdgenerator.zip` siap upload (membuang `.git`, log, cache, bukti transfer) |
+| `install.php` | Installer satu perintah di server: `.env`, `APP_KEY`, folder runtime, migrasi, cache |
+| `cpanel/index.php` | Untuk **Opsi A** — `public_html/index.php`, mendeteksi folder aplikasi otomatis |
+| `cpanel/.htaccess` | Untuk **Opsi A** — rewrite Laravel + UI, cache, gzip, proteksi `.env`/`.git` |
+| `cpanel/public.htaccess` | Untuk **Opsi B** — `.htaccess` standar `public/` |
 
 ---
 
@@ -250,10 +315,8 @@ Untuk perubahan backend, setelah meng-upload file, bersihkan cache:
 cd ~/mdgenerator
 php artisan config:clear
 php artisan route:clear
-php artisan view:clear
 php artisan config:cache
 php artisan route:cache
-php artisan view:cache
 ```
 
 > Kalau memakai `config:cache`, setiap kali `.env` berubah cache **harus**
@@ -280,12 +343,15 @@ php artisan view:cache
 ## Ringkasan perintah
 
 ```bash
-# Di server (Terminal cPanel)
+# Di server (Terminal cPanel) — cara tercepat, semua langkah jadi satu:
 cd ~/mdgenerator
+php deploy/install.php
+
+# Ekuivalen manualnya:
 composer install --no-dev --optimize-autoloader
-cp .env.example .env      # lalu isi nilainya
+cp .env.example .env      # lalu isi nilainya, ulangi skrip ini
 php artisan key:generate
 php artisan migrate --force
-php artisan config:cache && php artisan route:cache && php artisan view:cache
+php artisan config:cache && php artisan route:cache
 chmod -R 775 storage bootstrap/cache
 ```

@@ -3,13 +3,12 @@
 /**
  * public_html/index.php untuk deploy cPanel (domain utama).
  *
- * Satu-satunya file yang perlu diedit setelah upload: ganti "USERNAME" di
- * tiga tempat di bawah dengan username cPanel Anda (lihat File Manager,
- * path-nya /home/USERNAME/...).
+ * TIDAK PERLU DIEDIT. Folder aplikasi dideteksi otomatis sebagai
+ * <satu-level-di-atas-public_html>/mdgenerator. Kalau namanya lain, skrip ini
+ * mencari folder yang berisi bootstrap/app.php + vendor/autoload.php.
  *
- * Kode aplikasi (app/, vendor/, .env, dst.) TIDAK berada di public_html —
- * semuanya di /home/USERNAME/mdgenerator, sehingga tidak ada yang bisa
- * diunduh lewat browser.
+ * Kode aplikasi (app/, vendor/, .env, dst.) TIDAK berada di public_html — jadi
+ * tidak ada yang bisa diunduh lewat browser.
  */
 
 use Illuminate\Foundation\Application;
@@ -17,8 +16,24 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-// Ganti USERNAME (3 tempat) dengan username cPanel Anda.
-$base = '/home/USERNAME/mdgenerator';
+$home = dirname(__DIR__);                      // /home/USERNAME
+$base = $home.'/mdgenerator';                  // default hasil deploy.md
+
+if (! is_file($base.'/bootstrap/app.php')) {
+    $base = null;
+
+    foreach (glob($home.'/*', GLOB_ONLYDIR) as $dir) {
+        if (is_file($dir.'/bootstrap/app.php') && is_file($dir.'/vendor/autoload.php')) {
+            $base = $dir;
+            break;
+        }
+    }
+
+    if ($base === null) {
+        http_response_code(500);
+        exit('Folder aplikasi tidak ditemukan. Lihat deploy.md (langkah A2) — kode harus ada di "../mdgenerator".');
+    }
+}
 
 if (file_exists($maintenance = $base.'/storage/framework/maintenance.php')) {
     require $maintenance;

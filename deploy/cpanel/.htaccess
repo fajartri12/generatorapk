@@ -5,7 +5,7 @@
 # /home/USER/mdgenerator (di luar webroot).
 #
 # Yang dilakukan file ini:
-#   1. /build/*  -> build/*  (aset JS/CSS hasil npm run build, statis)
+#   1. /build/*  -> build/*  (aset JS/CSS statis dari public/build, tanpa build step)
 #   2. /storage/*-> storage/* (hanya ada di Opsi B yang memakai storage:link)
 #   3. lainnya   -> index.php  (Laravel melayani shell SPA + /api/*)
 #   4. CSS/JS/font di-cache agresif; index.html tidak.
